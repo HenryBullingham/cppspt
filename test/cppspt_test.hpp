@@ -82,7 +82,7 @@ public:
         return m_val == other.m_val;
     }
 
-    T& get()
+    const T& get () const
     {
         return m_val;
     }
@@ -153,7 +153,7 @@ public:
         return m_val == other.m_val;
     }
 
-    T& get()
+    const T& get () const
     {
         return m_val;
     }
@@ -174,14 +174,14 @@ class non_movable
 private:
     T m_val;
 
+    non_movable(non_movable<T>&&) = delete;
+    non_movable& operator=(non_movable<T>&&) = delete;
+
 public:
     non_movable(const T& val) : m_val(val) {}
 
     non_movable(const non_movable<T>& other) : m_val(other.m_val) {}
     non_movable<T> operator= (const non_movable<T>& other) { m_val = other.m_val; }
-
-    non_movable(non_movable<T>&&) = delete;
-    non_movable& operator=(non_movable<T>&&) = delete;
 
     T& val(){ return m_val; }
 };
@@ -195,7 +195,7 @@ private:
 public:
     non_copyable(const T& val) : m_val(val) {}
 
-    non_copyable(non_movable<T>&& other) : m_val(std::move(other.m_val)) {}
+    non_copyable(non_copyable<T>&& other) : m_val(std::move(other.m_val)) {}
     non_copyable<T> operator= (non_copyable<T>&& other) { m_val = std::move(other.m_val); }
 
     non_copyable(const non_copyable<T>&) = delete;

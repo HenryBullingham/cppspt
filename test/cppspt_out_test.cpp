@@ -8,114 +8,32 @@
 
 #include "cppspt_test.hpp"
 
-
-
-
-
-/*
-
-Calling assn operators
-
-*/
-
-void TestAssignFromCopy(const NString& val)
+void dont_write_anything(cppspt::out<NXString> str)
 {
-    NString s;
-    s = val;
 }
 
-void TestAssignFromMove(NString&& val)
+void write_const_ref(cppspt::out<NXString> str)
 {
-    NString s;
-    s = std::move(val);
+    NXString a_str;
+    str = a_str;
 }
 
-void TestAssignFromIn(cppspt::in<NString> val)
+void write_move(cppspt::out<NXString> str)
 {
-    cppspt::uninit<NString> s = NString();
-    s = std::move(val);
-}
-
-/*
-
-Multiple constructions
-
-*/
-
-void TestConstructCopyCopy(const NString& a, const NString& b)
-{
-    NString c = a;
-    NString d = b;
-}
-
-void TestConstructCopyMove(const NString& a, NString&& b)
-{
-    NString c = a;
-    NString d = std::move(b);
-}
-
-void TestConstructMoveCopy(NString&& a, const NString& b)
-{
-    NString c = std::move(a);
-    NString d = b;
-}
-
-void TestConstructMoveMove(NString&& a, NString&& b)
-{
-    NString c = std::move(a);
-    NString d = std::move(b);
-}
-
-void TestConstructInIn(cppspt::in<NString> a, cppspt::in<NString> b)
-{
-    cppspt::uninit<NString> c = std::move(a);
-    cppspt::uninit<NString> d = std::move(b);
-}
-
-/*
-
-    Writing to out
-
-*/
-
-using XString = construction_counter<std::string>;
-
-void TestWriteToOutMove(cppspt::out<XString> s)
-{
-    s = XString();
-}
-
-void TestWriteToOutCopy(cppspt::out<XString> s)
-{
-    XString c;
-    s = c;
-}
-
-void TestWriteToOutMoveRef()
-{
-    XString s;
-    TestWriteToOutMove(s);
-}
-
-void TestWriteToOutMoveUninit()
-{
-    cppspt::uninit<XString> s;
-    TestWriteToOutMove(s);
-}
-
-void TestWriteToOutCopyRef()
-{
-    XString s;
-    TestWriteToOutCopy(s);
-}
-
-void TestWriteToOutCopyUninit()
-{
-    cppspt::uninit<XString> s;
-    TestWriteToOutCopy(s);
+    str = NXString();
 }
 
 TEST_CASE("Testing Out", "[CPPSPT::Out]")
 {
+    //Testing that writing nothing does nothing
+    REQUIRE(run_with_history([] {NXString str; dont_write_anything(str); }) == "ctor dtor ");
+    REQUIRE(run_with_history([] {cppspt::uninit<NXString> str; dont_write_anything(str); }) == "");
 
+    //Testing that writing a const ref to out works
+    REQUIRE(run_with_history([] {NXString str; write_const_ref(str); }) == "ctor ctor copy-assn dtor dtor ");
+    REQUIRE(run_with_history([] {cppspt::uninit<NXString> str; write_const_ref(str); }) == "ctor copy-ctor dtor dtor ");
+
+    //Testing that writing a move to out works
+    REQUIRE(run_with_history([] {NXString str; write_move(str); }) == "ctor ctor move-assn dtor dtor ");
+    REQUIRE(run_with_history([] {cppspt::uninit<NXString> str; write_move(str); }) == "ctor move-ctor dtor dtor ");
 }

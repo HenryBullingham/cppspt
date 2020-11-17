@@ -18,6 +18,7 @@
 #endif
 
 #include <type_traits>
+#include <ostream>
 
 namespace cppspt
 {
@@ -114,9 +115,19 @@ namespace cppspt
     /// <typeparam name="T"></typeparam>
     /// <param name="param"></param>
     /// <returns></returns>
-    template<typename T>
+    template<typename T, typename std::enable_if< std::is_copy_constructible<T>::value&& std::is_move_constructible<T>::value, int>::type = 0 >
     T resolve(inout<in<T>> param);
 
+    template<typename T, typename std::enable_if< !std::is_copy_constructible<T>::value && std::is_move_constructible<T>::value, int>::type = 1 >
+    move<T> resolve(inout<in<T>> param);
+
+    template<typename T, typename std::enable_if< std::is_copy_constructible<T>::value && !std::is_move_constructible<T>::value, int>::type = 2 >
+    const T& resolve(inout<in<T>> param);
+
+#define cppspt_declare_copy_constructors_from_in(_type)\
+public:\
+    _type(const _type& other) : _type(cppspt::in<_type>(other)){}\
+    _type(_type&& other) : _type(cppspt::in<_type>(std::move(other))){}
 
     //Implementation details
     namespace detail
@@ -212,8 +223,10 @@ namespace cppspt
             //Need these to write good constructors
             bool was_moved() const { return m_was_moved; }
             const T & unmoved_ref() { return *m_ptr; }
-            T&& move_out() { return std::move(m_temp.val); }
+            move<T> move_out() { return std::move(m_temp.val); }
         };
+
+
 
         /*
         
@@ -426,6 +439,16 @@ namespace cppspt
             {
                 return m_was_initialized;
             }
+
+            public:
+                friend std::ostream& operator<< (std::ostream& out, uninit<T> val)
+                {
+                    if (val.was_initialized())
+                    {
+                        return out << val.m_val;
+                    }
+                    return out << "[Uninitialized]";
+                }
         };
 
 
@@ -538,7 +561,7 @@ namespace cppspt
     }
 
 
-    template<typename T>
+    template<typename T, typename std::enable_if< std::is_copy_constructible<T>::value && std::is_move_constructible<T>::value , int>::type >
     T resolve(inout<in<T>> param)
     {
         if (param.was_moved())
@@ -550,6 +573,23 @@ namespace cppspt
             return param.unmoved_ref();
         }
     }
+
+    template<typename T, typename std::enable_if< std::is_copy_constructible<T>::value && !std::is_move_constructible<T>::value, int>::type >
+    const T& resolve(inout<in<T>> param)
+    {
+        CPPSPT_ASSERT(!param.was_moved() && "Moved a solely copy constructible type!");
+
+        return param.unmoved_ref();
+    }
+
+    template<typename T, typename std::enable_if< !std::is_copy_constructible<T>::value && std::is_move_constructible<T>::value, int>::type >
+    move<T>&& resolve(inout<in<T>> param)
+    {
+        CPPSPT_ASSERT(param.was_moved() && "Copying a solely move constructible type!");
+
+        return param.move_out();
+    }
+
 }
 
 #endif
